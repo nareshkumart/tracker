@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Milk Tracker</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#24211c;--mute:#7a7468;--line:#e8e2d6;--buy:#2f8f5b;--buybg:#dff3e6;--skip:#c4553b;--skipbg:#f9e1da;--acc:#2b5fa8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171613;--card:#211f1b;--ink:#f0ece3;--mute:#9a9486;--line:#36332c;--buy:#6fd39b;--buybg:#1f3a2b;--skip:#ee8a72;--skipbg:#432520;--acc:#7fadee;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171613;--card:#211f1b;--ink:#f0ece3;--mute:#9a9486;--line:#36332c;--buy:#6fd39b;--buybg:#1f3a2b;--skip:#ee8a72;--skipbg:#432520;--acc:#7fadee;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:110px}
+main{max-width:460px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav b{font-size:17px}
+button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+button:active{transform:scale(.97)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dow{font-size:11px;color:var(--mute);text-align:center}
+.day{aspect-ratio:1;padding:0;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;line-height:1.1}
+.day small{font-size:10px}
+.day.b{background:var(--buybg);border-color:var(--buy);color:var(--buy)}
+.day.s{background:var(--skipbg);border-color:var(--skip);color:var(--skip)}
+.day.f{color:var(--mute);background:transparent;border-style:dashed}
+.day.sel{outline:2px solid var(--acc);outline-offset:1px}
+.day.today{font-weight:700;text-decoration:underline}
+.day.empty{visibility:hidden}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.bb{background:var(--buy);color:#fff;border-color:var(--buy)}
+.sb{background:var(--skip);color:#fff;border-color:var(--skip)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat span{display:block;font-size:12px;color:var(--mute)}
+.stat b{font-size:20px}
+input{font:inherit;width:100%;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+label{font-size:12px;color:var(--mute);display:block;margin-bottom:3px}
+.qty{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:10px}
+.qty b{min-width:36px;text-align:center;font-size:18px}
+.hint{font-size:12px;color:var(--mute);margin:6px 0 0}
+.title{font-size:14px;margin:0 0 10px;color:var(--mute)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.bar div{max-width:460px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+.bar span{font-size:12px;color:var(--mute)}
+.bar b{font-size:26px;color:var(--buy)}
+</style>
+</head>
+<body>
+<main>
+<h1>🥛 Milk Tracker</h1>
+
+<div class="card">
+  <div class="nav"><button id="prev" aria-label="Previous month">‹</button><b id="mlabel"></b><button id="next" aria-label="Next month">›</button></div>
+  <div class="grid" id="dows"></div>
+  <div class="grid" id="grid" style="margin-top:6px"></div>
+  <p class="hint">Every day up to today counts as bought. Tap a date and choose Skipped only for days you didn’t buy.</p>
+</div>
+
+<div class="card">
+  <p class="title" id="elabel"></p>
+  <div class="qty"><button id="qm">−</button><b id="qv">1</b><button id="qp">+</button><span id="qu" style="color:var(--mute)"></span></div>
+  <div class="row"><button class="sb" id="sbtn">Skipped</button><button class="bb" id="bbtn">Bought</button><button id="cbtn">Reset</button></div>
+</div>
+
+<div class="card">
+  <div class="stats">
+    <div class="stat"><span>Days bought</span><b id="nb">0</b></div>
+    <div class="stat"><span>Days skipped</span><b id="ns">0</b></div>
+    <div class="stat"><span id="ul">Packets</span><b id="nq">0</b></div>
+    <div class="stat"><span>Days to come</span><b id="nf">0</b></div>
+  </div>
+  <div class="row" style="margin-top:12px"><button id="copy">Copy summary</button></div>
+</div>
+
+<div class="card">
+  <p class="title">Settings</p>
+  <div class="row">
+    <div><label for="price">Price per unit (₹)</label><input id="price" type="number" inputmode="decimal" min="0" step="0.5"></div>
+    <div><label for="dq">Units per day</label><input id="dq" type="number" inputmode="numeric" min="1" step="1"></div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <div><label for="unit">Unit name</label><input id="unit" type="text"></div>
+    <div><label for="start">Counting from</label><input id="start" type="date"></div>
+  </div>
+  <div class="row" style="margin-top:10px"><button id="newp">Price changed: apply from today</button></div>
+  <p class="hint">Editing the price above fixes it for all days. When the milk price really changes, tap the button so older days keep the old price.</p>
+</div>
+</main>
+
+<div class="bar"><div><span id="barl">This month</span><b id="tot">₹0</b></div></div>
+
+<script>
+var KEY='milk-tracker-v1';
+var pad=function(n){return n<10?'0'+n:''+n};
+var key=function(y,m,d){return y+'-'+pad(m+1)+'-'+pad(d)};
+var tk=function(){var t=new Date();return key(t.getFullYear(),t.getMonth(),t.getDate())};
+var st={unit:'packet',days:{}};
+try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.days)st=o}}catch(e){}
+if(!st.hist)st.hist=[{from:'0000-00-00',p:+st.price||30,q:1}];
+if(!st.start){var n0=new Date();st.start=key(n0.getFullYear(),n0.getMonth(),1)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+var $=function(i){return document.getElementById(i)};
+var now=new Date();
+var view={y:now.getFullYear(),m:now.getMonth()};
+var sel=tk(),qty=1;
+var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+['S','M','T','W','T','F','S'].forEach(function(d){var e=document.createElement('div');e.className='dow';e.textContent=d;$('dows').appendChild(e)});
+function money(n){return '₹'+(Math.round(n*100)/100).toLocaleString('en-IN')}
+function rate(k){var r=st.hist[0];st.hist.forEach(function(e){if(e.from<=k)r=e});return r}
+// effective state of a date: {s:'b'|'s'|'f'|'x', q, p}
+function eff(k){
+  var v=st.days[k];
+  if(v&&v.s==='s')return{s:'s'};
+  if(k>tk())return v&&v.s==='b'?{s:'f',q:v.q,p:v.p}:{s:'f'};
+  if(k<st.start&&!v)return{s:'x'};
+  if(v&&v.s==='b')return{s:'b',q:v.q,p:v.p};
+  var r=rate(k);return{s:'b',q:r.q,p:r.p,auto:1};
+}
+function render(){
+  $('mlabel').textContent=MN[view.m]+' '+view.y;
+  var g=$('grid');g.innerHTML='';
+  var first=new Date(view.y,view.m,1).getDay(),dim=new Date(view.y,view.m+1,0).getDate();
+  for(var i=0;i<first;i++){var e=document.createElement('div');e.className='day empty';g.appendChild(e)}
+  var nb=0,ns=0,nq=0,nf=0,tot=0,T=tk();
+  for(var d=1;d<=dim;d++){
+    var k=key(view.y,view.m,d),x=eff(k),b=document.createElement('button');
+    var cls=x.s==='b'?'b':x.s==='s'?'s':'f';
+    b.className='day '+cls+(k===sel?' sel':'')+(k===T?' today':'');
+    b.innerHTML=d+(x.s==='b'?'<small>×'+x.q+'</small>':x.s==='s'?'<small>skip</small>':'');
+    b.onclick=(function(k){return function(){sel=k;var y=eff(k);qty=y.q||rate(k).q;render()}})(k);
+    g.appendChild(b);
+    if(x.s==='b'){nb++;nq+=x.q;tot+=x.q*x.p}else if(x.s==='s')ns++;else if(x.s==='f')nf++;
+  }
+  $('nb').textContent=nb;$('ns').textContent=ns;$('nq').textContent=nq;$('nf').textContent=nf;
+  $('tot').textContent=money(tot);
+  $('barl').textContent=MN[view.m]+' total · '+nb+' bought, '+ns+' skipped';
+  var u=st.unit||'packet';
+  $('ul').textContent=u.charAt(0).toUpperCase()+u.slice(1)+'s bought';
+  $('qu').textContent=u+(qty>1?'s':'');
+  $('qv').textContent=qty;
+  var p=sel.split('-'),x2=eff(sel);
+  $('elabel').textContent=new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})+(x2.s==='s'?' — skipped':x2.s==='b'?(x2.auto?' — bought (default)':' — bought'):'');
+  render.t={nb:nb,ns:ns,nq:nq,tot:tot};
+}
+function mark(s){
+  if(s==='b')st.days[sel]={s:'b',q:qty,p:rate(sel).p};
+  else if(s==='s')st.days[sel]={s:'s'};
+  else{delete st.days[sel];qty=rate(sel).q}
+  save();render();
+}
+$('bbtn').onclick=function(){mark('b')};
+$('sbtn').onclick=function(){mark('s')};
+$('cbtn').onclick=function(){mark('c')};
+function setq(n){qty=n;if(eff(sel).s==='s'){render();return}mark('b')}
+$('qp').onclick=function(){setq(Math.min(20,qty+1))};
+$('qm').onclick=function(){setq(Math.max(1,qty-1))};
+$('prev').onclick=function(){view.m--;if(view.m<0){view.m=11;view.y--}render()};
+$('next').onclick=function(){view.m++;if(view.m>11){view.m=0;view.y++}render()};
+var last=function(){return st.hist[st.hist.length-1]};
+$('price').value=last().p;$('dq').value=last().q;$('unit').value=st.unit;$('start').value=st.start;
+$('price').oninput=function(){last().p=parseFloat(this.value)||0;save();render()};
+$('dq').oninput=function(){last().q=Math.max(1,parseInt(this.value)||1);save();qty=last().q;render()};
+$('unit').oninput=function(){st.unit=this.value.trim()||'packet';save();render()};
+$('start').onchange=function(){if(this.value){st.start=this.value;save();render()}};
+$('newp').onclick=function(){
+  var L=last(),t=tk();
+  if(L.from!==t)st.hist.push({from:t,p:L.p,q:L.q});
+  save();$('price').focus();$('price').select();
+  this.textContent='New price starts today – edit it above';
+};
+$('copy').onclick=function(){
+  var t=render.t,u=st.unit||'packet';
+  var s='Milk – '+MN[view.m]+' '+view.y+'\nBought: '+t.nb+' days ('+t.nq+' '+u+'s)\nSkipped: '+t.ns+' days\nTotal: '+money(t.tot);
+  var b=this;
+  function done(){b.textContent='Copied ✓';setTimeout(function(){b.textContent='Copy summary'},1500)}
+  try{navigator.clipboard.writeText(s).then(done,function(){prompt('Copy this:',s)})}catch(e){prompt('Copy this:',s)}
+};
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){var n=new Date();if(n.getDate()!==now.getDate()||n.getMonth()!==now.getMonth()){now=n;view={y:n.getFullYear(),m:n.getMonth()};sel=tk();qty=rate(sel).q}render()}
+});
+qty=rate(sel).q;
+render();
+</script>
+</body>
+</html>
